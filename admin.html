@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6B1E2E">
+<meta name="robots" content="noindex">
+<title>Admin Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .login { max-width: 420px; margin: 0 auto; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--gold-soft); animation: rise .5s both; }
+  .stat .n { font-size: 24px; font-weight: 700; color: var(--maroon-deep); line-height: 1.2; }
+  .stat .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { border: 0; cursor: pointer; padding: 10px 18px; border-radius: 12px; background: rgba(255, 255, 255, .7); color: var(--muted); font-weight: 600; display: inline-flex; gap: 8px; align-items: center; transition: all .2s; }
+  .tab.on { background: var(--maroon); color: #fff; box-shadow: 0 6px 16px rgba(107, 30, 46, .25); }
+  .filters { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+  .filters .field { margin: 0; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin: 14px 0; }
+  .kv .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .kv .v { font-weight: 500; word-break: break-word; }
+  .kv.full { grid-column: 1 / -1; }
+  .modal h3 { margin: 0; font-size: 22px; color: var(--maroon-deep); }
+  .modal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .x-btn { border: 0; background: var(--cream-2); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+  .total-line { display: flex; justify-content: space-between; font-weight: 700; font-size: 18px; padding: 12px 4px 0; }
+  .count-line { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+
+  @media (max-width: 860px) { .filters { grid-template-columns: 1fr 1fr; } .filters .field:first-child { grid-column: 1 / -1; } }
+  @media (max-width: 640px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    /* Orders become stacked cards on phones */
+    #ordersTable thead { display: none; }
+    #ordersTable, #ordersTable tbody, #ordersTable tr, #ordersTable td { display: block; width: 100%; }
+    #ordersTable tr { border-top: 1px solid var(--line); padding: 10px 6px; }
+    #ordersTable td { border: 0; padding: 3px 10px; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+    #ordersTable td::before { content: attr(data-l); color: var(--muted); font-size: 12px; text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="logo"><i data-i="settings"></i></div>
+    <div>
+      <h1>Admin Panel</h1>
+      <p id="orgName">Orders, exports and settings</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="ghost-btn hidden" id="logoutBtn" type="button"><i data-i="logout"></i> Log out</button>
+  </div>
+</header>
+
+<main class="container wide">
+
+  <section class="card login" id="loginCard">
+    <h2><i data-i="lock"></i> Admin login</h2>
+    <p class="sub">Enter the admin password to continue.</p>
+    <form id="loginForm">
+      <div class="field" id="f-pw">
+        <label for="pw">Password</label>
+        <div class="input-wrap"><i data-i="lock"></i>
+          <input id="pw" type="password" autocomplete="current-password" placeholder="Admin password">
+        </div>
+        <div class="err" id="pwErr">Incorrect password.</div>
+      </div>
+      <button class="btn block" type="submit" id="loginBtn">Open admin panel</button>
+    </form>
+  </section>
+
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <button class="tab on" data-tab="orders" type="button"><i data-i="list"></i> Orders</button>
+      <button class="tab" data-tab="settings" type="button"><i data-i="settings"></i> Settings</button>
+    </div>
+
+    <!-- Orders -->
+    <div id="tab-orders">
+      <div class="stats">
+        <div class="stat"><div class="n" id="sOrders">0</div><div class="l">Orders</div></div>
+        <div class="stat"><div class="n" id="sTotal">&#8377;0</div><div class="l">Total amount</div></div>
+        <div class="stat"><div class="n" id="sPending">0</div><div class="l">Pending</div></div>
+        <div class="stat"><div class="n" id="sPrinted">0</div><div class="l">Printed</div></div>
+      </div>
+
+      <section class="card">
+        <div class="filters">
+          <div class="field"><label for="q">Search</label>
+            <div class="input-wrap"><i data-i="search"></i><input id="q" type="search" placeholder="Token, name, mobile, PAN, Aadhaar"></div></div>
+          <div class="field"><label for="from">From date</label><input id="from" type="date"></div>
+          <div class="field"><label for="to">To date</label><input id="to" type="date"></div>
+          <div class="field"><label for="status">Status</label>
+            <select id="status"><option value="">All</option><option>Pending</option><option>Printed</option></select></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn outline sm" id="reloadBtn" type="button" title="Refresh"><i data-i="refresh"></i></button>
+            <button class="btn gold sm" id="csvBtn" type="button"><i data-i="download"></i> CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="padding:14px">
+        <p class="count-line" id="countLine"></p>
+        <div class="table-wrap">
+          <table id="ordersTable">
+            <thead><tr><th>Token</th><th>Date &amp; time</th><th>Name</th><th>Mobile</th><th class="num">Items</th><th class="num">Total</th><th>Filled by</th><th>Status</th></tr></thead>
+            <tbody id="ordersBody"><tr><td colspan="8" class="empty">Loading orders...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Settings -->
+    <div id="tab-settings" class="hidden">
+      <section class="card" style="max-width:560px">
+        <h2><i data-i="settings"></i> Settings</h2>
+        <p class="sub">Leave a password blank to keep it unchanged. Passwords need at least 6 characters.</p>
+        <form id="settingsForm" autocomplete="off">
+          <div class="field"><label for="sName">Samagam name</label>
+            <div class="input-wrap"><i data-i="flower"></i><input id="sName" type="text" maxlength="80"></div></div>
+          <div class="field"><label for="sStall">New stall password</label>
+            <div class="input-wrap"><i data-i="lock"></i><input id="sStall" type="password" autocomplete="new-password" placeholder="Leave blank to keep"></div></div>
+          <div class="field"><label for="sAdmin">New admin password</label>
+            <div class="input-wrap"><i data-i="lock"></i><input id="sAdmin" type="password" autocomplete="new-password" placeholder="Leave blank to keep"></div></div>
+          <button class="btn" type="submit" id="saveBtn"><i data-i="check"></i> Save settings</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div id="detailRoot"></div>
+<div id="toasts"></div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var PW_KEY = 'adminPw';
+  var all = [], view = [];
+
+  function show(loggedIn) {
+    $('loginCard').classList.toggle('hidden', loggedIn);
+    $('app').classList.toggle('hidden', !loggedIn);
+    $('logoutBtn').classList.toggle('hidden', !loggedIn);
+  }
+  function logout(msg) { App.store.del(PW_KEY); all = []; show(false); $('pw').value = ''; if (msg) App.toast(msg, 'error'); }
+
+  function login(pw, btn, silent) {
+    App.setBusy(btn, true, 'Checking...');
+    return App.api('checkPassword', { role: 'admin', password: pw }).then(function (r) {
+      App.store.set(PW_KEY, pw);
+      if (r.samagamName) { $('orgName').textContent = r.samagamName; $('sName').value = r.samagamName; }
+      show(true); loadOrders();
+    }).catch(function (e) {
+      if (!silent) { $('pwErr').textContent = e.message; $('f-pw').classList.add('invalid'); }
+      App.store.del(PW_KEY);
+    }).then(function () { App.setBusy(btn, false); });
+  }
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault(); $('f-pw').classList.remove('invalid');
+    var pw = $('pw').value; if (!pw) { $('pwErr').textContent = 'Please enter the password.'; $('f-pw').classList.add('invalid'); return; }
+    login(pw, $('loginBtn'));
+  });
+  $('logoutBtn').addEventListener('click', function () { logout(); });
+  if (App.store.get(PW_KEY)) login(App.store.get(PW_KEY), null, true);
+
+  document.querySelector('.tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('.tab'); if (!b) return;
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('on', t === b); });
+    $('tab-orders').classList.toggle('hidden', b.dataset.tab !== 'orders');
+    $('tab-settings').classList.toggle('hidden', b.dataset.tab !== 'settings');
+  });
+
+  /* ---------- orders ---------- */
+  function loadOrders() {
+    var btn = $('reloadBtn'); App.setBusy(btn, true);
+    return App.api('listOrders', { password: App.store.get(PW_KEY) }).then(function (r) {
+      all = r.orders; applyFilters();
+    }).catch(function (e) {
+      if (/password/i.test(e.message)) return logout('Your session expired. Please log in again.');
+      $('ordersBody').innerHTML = '<tr><td colspan="8" class="empty">' + App.esc(e.message) + '</td></tr>';
+    }).then(function () { App.setBusy(btn, false); });
+  }
+  $('reloadBtn').addEventListener('click', loadOrders);
+
+  function applyFilters() {
+    var q = $('q').value.trim().toLowerCase().replace(/\s+/g, ' ');
+    var qd = q.replace(/\s/g, '');
+    var from = $('from').value, to = $('to').value, status = $('status').value;
+    view = all.filter(function (o) {
+      var d = o.dateTime.slice(0, 10);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      if (status && o.status !== status) return false;
+      if (!q) return true;
+      var hay = (o.token + ' ' + o.name + ' ' + o.mobile + ' ' + o.pan + ' ' + o.aadhaar + ' ' + o.address).toLowerCase();
+      return hay.indexOf(q) > -1 || hay.replace(/\s/g, '').indexOf(qd) > -1;
+    });
+    render();
+  }
+  ['q', 'from', 'to', 'status'].forEach(function (id) { $(id).addEventListener('input', applyFilters); });
+
+  function render() {
+    var sum = view.reduce(function (s, o) { return s + o.total; }, 0);
+    var pend = view.filter(function (o) { return o.status !== 'Printed'; }).length;
+    $('sOrders').textContent = view.length;
+    $('sTotal').textContent = App.inr(sum);
+    $('sPending').textContent = pend;
+    $('sPrinted').textContent = view.length - pend;
+    $('countLine').textContent = 'Showing ' + view.length + ' of ' + all.length + ' orders';
+    if (!view.length) { $('ordersBody').innerHTML = '<tr><td colspan="8" class="empty">No orders found.</td></tr>'; return; }
+    $('ordersBody').innerHTML = view.map(function (o, i) {
+      var printed = o.status === 'Printed';
+      return '<tr class="click" data-i="' + i + '"><td data-l="Token"><b>' + App.esc(o.token) + '</b></td><td data-l="Date">' + App.esc(App.fmtDate(o.dateTime)) +
+        '</td><td data-l="Name">' + App.esc(o.name) + '</td><td data-l="Mobile">' + App.esc(o.mobile) + '</td><td data-l="Items" class="num">' + o.items.length +
+        '</td><td data-l="Total" class="num"><b>' + App.inr(o.total) + '</b></td><td data-l="Filled by">' + App.esc(o.filledBy) +
+        '</td><td data-l="Status"><span class="badge ' + (printed ? 'printed' : 'pending') + '">' + (printed ? 'Printed' : 'Pending') + '</span></td></tr>';
+    }).join('');
+  }
+  $('ordersBody').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr[data-i]'); if (tr) openDetail(view[+tr.dataset.i]);
+  });
+
+  /* ---------- detail modal ---------- */
+  function kv(k, v, full) { return '<div class="kv' + (full ? ' full' : '') + '"><div class="k">' + App.esc(k) + '</div><div class="v">' + App.esc(v || '-') + '</div></div>'; }
+  function openDetail(o) {
+    var rows = o.items.map(function (i) {
+      return '<tr><td>' + App.esc(i.name) + '</td><td class="num">' + i.qty + '</td><td class="num">' + App.inr(i.rate) + '</td><td class="num">' + App.inr(i.amount) + '</td></tr>';
+    }).join('');
+    var printed = o.status === 'Printed';
+    $('detailRoot').innerHTML =
+      '<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true"><div class="modal-top"><div><h3>' + App.esc(o.token) + '</h3>' +
+      '<div class="hint">' + App.esc(App.fmtDate(o.dateTime)) + ' &middot; ' + App.esc(o.samagam) + '</div></div>' +
+      '<div style="display:flex;gap:10px;align-items:center"><span class="badge ' + (printed ? 'printed' : 'pending') + '">' + o.status + '</span>' +
+      '<button class="x-btn" id="xBtn" type="button" aria-label="Close">' + App.icon('x') + '</button></div></div>' +
+      '<div class="detail-grid">' + kv('Name', o.name) + kv('Mobile', o.mobile) + kv('Address', o.address, true) + kv('PAN', o.pan) + kv('Aadhaar', App.spacedAadhaar(o.aadhaar)) +
+      kv('Filled by', o.filledBy) + kv('Printed at', o.printedAt ? App.fmtDate(o.printedAt) : 'Not printed yet') + '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="total-line"><span>Grand total</span><span>' + App.inr(o.total) + '</span></div></div></div>';
+    var close = function () { $('detailRoot').innerHTML = ''; document.removeEventListener('keydown', onKey); };
+    var onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    $('xBtn').addEventListener('click', close);
+    $('mbg').addEventListener('click', function (e) { if (e.target.id === 'mbg') close(); });
+  }
+
+  /* ---------- CSV ---------- */
+  function csvCell(v, asText) {
+    v = String(v == null ? '' : v);
+    if (asText) return '"=""' + v.replace(/"/g, '""') + '"""';   // keeps long digits intact in Excel
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;                       // blocks formula injection
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+  $('csvBtn').addEventListener('click', function () {
+    if (!view.length) { App.toast('There are no orders to export.', 'error'); return; }
+    var head = ['Token', 'Date & time', 'Samagam', 'Filled by', 'Name', 'Mobile', 'Address', 'PAN', 'Aadhaar', 'Items', 'Total', 'Status', 'Printed at'];
+    var lines = [head.map(function (h) { return csvCell(h); }).join(',')];
+    view.forEach(function (o) {
+      var items = o.items.map(function (i) { return i.name + ' x' + i.qty + ' @' + i.rate + ' = ' + i.amount; }).join('; ');
+      lines.push([csvCell(o.token), csvCell(o.dateTime), csvCell(o.samagam), csvCell(o.filledBy), csvCell(o.name), csvCell(o.mobile, true),
+        csvCell(o.address), csvCell(o.pan), csvCell(o.aadhaar, true), csvCell(items), o.total, csvCell(o.status), csvCell(o.printedAt)].join(','));
+    });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'orders-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    App.toast('CSV downloaded (' + view.length + ' orders).', 'ok');
+  });
+
+  /* ---------- settings ---------- */
+  $('settingsForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var s = { samagamName: $('sName').value.trim(), stallPassword: $('sStall').value, adminPassword: $('sAdmin').value };
+    var btn = $('saveBtn'); App.setBusy(btn, true, 'Saving...');
+    App.api('setSettings', { password: App.store.get(PW_KEY), settings: s }).then(function (r) {
+      if (s.adminPassword) App.store.set(PW_KEY, s.adminPassword);
+      $('orgName').textContent = r.samagamName; $('sName').value = r.samagamName;
+      $('sStall').value = ''; $('sAdmin').value = '';
+      App.toast('Settings saved.', 'ok');
+    }).catch(function (err) { App.toast(err.message, 'error'); })
+      .then(function () { App.setBusy(btn, false); });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6B1E2E">
+<meta name="robots" content="noindex">
+<title>Stall Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .login { max-width: 420px; margin: 0 auto; }
+  .token-input { font-size: 26px !important; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; text-align: center; padding: 14px !important; }
+  .order-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .order-head .tk { font-size: 30px; font-weight: 700; color: var(--maroon-deep); letter-spacing: 1px; line-height: 1.1; }
+  .order-head .dt { color: var(--muted); font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 16px; }
+  .kv .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .kv .v { font-weight: 500; word-break: break-word; }
+  .kv.full { grid-column: 1 / -1; }
+  .mono { font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+  .grand { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(135deg, var(--maroon-deep), var(--maroon)); color: #fff; font-size: 18px; font-weight: 700; }
+  .grand span:first-child { color: var(--gold-soft); font-weight: 500; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+  .actions .seg { margin-left: auto; }
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .actions .seg { margin-left: 0; } }
+
+  /* ---------- print slip (hidden on screen) ---------- */
+  #slip { display: none; }
+  @media print {
+    body { background: #fff !important; }
+    body > *:not(#slip) { display: none !important; }
+    #slip { display: block; color: #000; font-family: 'Poppins', Arial, sans-serif; width: 100%; font-size: 12.5px; line-height: 1.35; }
+    #slip * { color: #000 !important; }
+    #slip .c { text-align: center; }
+    #slip .org { font-size: 1.35em; font-weight: 700; }
+    #slip .tag { font-size: .85em; letter-spacing: 2px; margin-top: 2px; }
+    #slip .token { font-size: 2.2em; font-weight: 700; letter-spacing: 2px; border: 2px solid #000; border-radius: 6px; padding: 4px 0; margin: 8px 0; text-align: center; }
+    #slip hr { border: 0; border-top: 1px dashed #000; margin: 7px 0; }
+    #slip .meta { display: flex; justify-content: space-between; gap: 8px; font-size: .9em; }
+    #slip .cust div { margin: 1px 0; word-break: break-word; }
+    #slip .cust b { display: inline-block; min-width: 62px; }
+    #slip table { width: 100%; border-collapse: collapse; font-size: .95em; }
+    #slip th { text-align: left; border-bottom: 1px solid #000; border-top: 1px solid #000; padding: 3px 2px; background: none; font-size: .9em; }
+    #slip td { padding: 3px 2px; border: 0; border-bottom: 1px dotted #999; vertical-align: top; }
+    #slip .r { text-align: right; white-space: nowrap; }
+    #slip .gt { display: flex; justify-content: space-between; font-size: 1.25em; font-weight: 700; padding: 6px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; margin-top: 6px; }
+    #slip .foot { text-align: center; font-size: .85em; margin-top: 8px; }
+    #slip.thermal { font-size: 11px; }
+    #slip.thermal .cust b { display: block; min-width: 0; font-size: .85em; }
+    #slip.a5 { font-size: 14px; padding: 0 4mm; }
+  }
+</style>
+<style id="pageStyle"></style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="logo"><i data-i="receipt"></i></div>
+    <div>
+      <h1>Stall Desk</h1>
+      <p id="orgName">Look up an order by its token and print the slip</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="ghost-btn hidden" id="logoutBtn" type="button"><i data-i="logout"></i> Log out</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Login -->
+  <section class="card login" id="loginCard">
+    <h2><i data-i="lock"></i> Stall login</h2>
+    <p class="sub">Enter the stall password to continue.</p>
+    <form id="loginForm">
+      <div class="field" id="f-pw">
+        <label for="pw">Password</label>
+        <div class="input-wrap"><i data-i="lock"></i>
+          <input id="pw" type="password" autocomplete="current-password" placeholder="Stall password">
+        </div>
+        <div class="err" id="pwErr">Incorrect password.</div>
+      </div>
+      <button class="btn block" type="submit" id="loginBtn">Open stall desk</button>
+    </form>
+  </section>
+
+  <!-- Search -->
+  <section class="card hidden" id="searchCard">
+    <h2><i data-i="ticket"></i> Find an order</h2>
+    <p class="sub">Type the token the customer shows, for example MN-4821.</p>
+    <form id="tokenForm">
+      <div class="field">
+        <input id="token" class="token-input" type="text" autocomplete="off" autocapitalize="characters" placeholder="MN-0000" maxlength="12">
+      </div>
+      <button class="btn block" type="submit" id="findBtn"><i data-i="search"></i> Show order</button>
+    </form>
+    <div id="findMsg" style="margin-top:12px"></div>
+  </section>
+
+  <!-- Order -->
+  <section class="card hidden" id="orderCard"></section>
+</main>
+
+<div id="slip"></div>
+<div id="toasts"></div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var PW_KEY = 'stallPw';
+  var current = null;
+  var paper = App.local.get('paperSize') === 'a5' ? 'a5' : 'thermal';
+
+  function show(loggedIn) {
+    $('loginCard').classList.toggle('hidden', loggedIn);
+    $('searchCard').classList.toggle('hidden', !loggedIn);
+    $('logoutBtn').classList.toggle('hidden', !loggedIn);
+    if (!loggedIn) $('orderCard').classList.add('hidden');
+    if (loggedIn) setTimeout(function () { $('token').focus(); }, 100);
+  }
+  function logout(msg) {
+    App.store.del(PW_KEY); current = null; show(false); $('pw').value = '';
+    if (msg) App.toast(msg, 'error');
+  }
+
+  function login(pw, btn, silent) {
+    App.setBusy(btn, true, 'Checking...');
+    return App.api('checkPassword', { role: 'stall', password: pw }).then(function (r) {
+      App.store.set(PW_KEY, pw);
+      if (r.samagamName) $('orgName').textContent = r.samagamName;
+      show(true);
+    }).catch(function (e) {
+      if (!silent) { $('pwErr').textContent = e.message; $('f-pw').classList.add('invalid'); }
+      App.store.del(PW_KEY);
+    }).then(function () { App.setBusy(btn, false); });
+  }
+
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault(); $('f-pw').classList.remove('invalid');
+    var pw = $('pw').value; if (!pw) { $('pwErr').textContent = 'Please enter the password.'; $('f-pw').classList.add('invalid'); return; }
+    login(pw, $('loginBtn'));
+  });
+  $('logoutBtn').addEventListener('click', function () { logout(); });
+  if (App.store.get(PW_KEY)) login(App.store.get(PW_KEY), null, true);
+
+  function normToken(v) {
+    v = v.trim().toUpperCase().replace(/\s+/g, '');
+    if (/^\d+$/.test(v)) return 'MN-' + v;
+    if (/^MN\d+$/.test(v)) return 'MN-' + v.slice(2);
+    return v;
+  }
+
+  $('tokenForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var t = normToken($('token').value);
+    $('findMsg').innerHTML = '';
+    if (!/^MN-\d{4,6}$/.test(t)) { $('findMsg').innerHTML = '<div class="banner error">' + App.icon('alert') + '<span>Please enter a valid token, for example MN-4821.</span></div>'; return; }
+    $('token').value = t;
+    var btn = $('findBtn'); App.setBusy(btn, true, 'Searching...');
+    App.api('getOrder', { token: t, password: App.store.get(PW_KEY) }).then(function (r) {
+      renderOrder(r.order);
+    }).catch(function (err) {
+      if (/password/i.test(err.message)) return logout('Your session expired. Please log in again.');
+      $('orderCard').classList.add('hidden');
+      $('findMsg').innerHTML = '<div class="banner error">' + App.icon('alert') + '<span>' + App.esc(err.message) + '</span></div>';
+    }).then(function () { App.setBusy(btn, false); });
+  });
+
+  function badge(s) {
+    var printed = s === 'Printed';
+    return '<span class="badge ' + (printed ? 'printed' : 'pending') + '">' + App.icon(printed ? 'check' : 'refresh') + (printed ? 'Printed' : 'Pending') + '</span>';
+  }
+
+  function renderOrder(o, keepScroll) {
+    current = o;
+    var rows = o.items.map(function (i) {
+      return '<tr><td>' + App.esc(i.name) + '<div class="hint" style="margin:0">Code ' + App.esc(i.code) + '</div></td><td class="num">' + i.qty +
+        '</td><td class="num">' + App.inr(i.rate) + '</td><td class="num"><b>' + App.inr(i.amount) + '</b></td></tr>';
+    }).join('');
+    var card = $('orderCard');
+    card.innerHTML =
+      '<div class="order-head"><div><div class="tk">' + App.esc(o.token) + '</div><div class="dt">' + App.esc(App.fmtDate(o.dateTime)) + ' &middot; ' + App.esc(o.samagam) + '</div></div>' +
+      '<div id="statusBox">' + badge(o.status) + '</div></div>' +
+      '<div class="grid2">' +
+      kv('Name', o.name) + kv('Mobile', o.mobile, 'mono') + kv('Address', o.address, '', true) +
+      kv('PAN', o.pan, 'mono') + kv('Aadhaar', App.spacedAadhaar(o.aadhaar), 'mono') + kv('Filled by', o.filledBy) +
+      (o.printedAt ? kv('Printed at', App.fmtDate(o.printedAt)) : '') + '</div>' +
+      '<div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="grand"><span>Grand total</span><span>' + App.inr(o.total) + '</span></div>' +
+      '<div class="actions"><button class="btn" id="printBtn" type="button">' + App.icon('print') + ' Print slip</button>' +
+      (o.status === 'Printed' ? '' : '<button class="btn gold" id="markBtn" type="button">' + App.icon('check') + ' Mark as Printed</button>') +
+      '<div class="seg" id="paperSeg" title="Paper size"><button type="button" data-p="thermal">80 mm roll</button><button type="button" data-p="a5">A5 sheet</button></div></div>';
+    card.classList.remove('hidden');
+    card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+    syncPaperUI();
+    $('printBtn').addEventListener('click', doPrint);
+    if ($('markBtn')) $('markBtn').addEventListener('click', function () { markPrinted(o, this); });
+    $('paperSeg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      paper = b.dataset.p; App.local.set('paperSize', paper); syncPaperUI();
+    });
+    if (!keepScroll) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function kv(k, v, cls, full) {
+    return '<div class="kv' + (full ? ' full' : '') + '"><div class="k">' + App.esc(k) + '</div><div class="v ' + (cls || '') + '">' + App.esc(v || '-') + '</div></div>';
+  }
+  function syncPaperUI() {
+    var seg = $('paperSeg'); if (!seg) return;
+    seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.p === paper); });
+  }
+
+  /* ---------- print ---------- */
+  function buildSlip(o) {
+    var rows = o.items.map(function (i) {
+      return '<tr><td>' + App.esc(i.name) + '</td><td class="r">' + i.qty + '</td><td class="r">' + App.inr(i.rate) + '</td><td class="r">' + App.inr(i.amount) + '</td></tr>';
+    }).join('');
+    var qtyTotal = o.items.reduce(function (s, i) { return s + i.qty; }, 0);
+    return '<div class="c org">' + App.esc(o.samagam) + '</div><div class="c tag">ORDER SLIP</div>' +
+      '<div class="token">' + App.esc(o.token) + '</div>' +
+      '<div class="meta"><span>' + App.esc(App.fmtDate(o.dateTime)) + '</span><span>' + App.esc(o.filledBy) + '</span></div><hr>' +
+      '<div class="cust"><div><b>Name</b> ' + App.esc(o.name) + '</div><div><b>Mobile</b> ' + App.esc(o.mobile) + '</div>' +
+      '<div><b>Address</b> ' + App.esc(o.address) + '</div><div><b>PAN</b> ' + App.esc(o.pan) + '</div>' +
+      '<div><b>Aadhaar</b> ' + App.esc(App.spacedAadhaar(o.aadhaar)) + '</div></div><hr>' +
+      '<table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="meta" style="margin-top:4px"><span>Total quantity</span><span>' + qtyTotal + '</span></div>' +
+      '<div class="gt"><span>GRAND TOTAL</span><span>' + App.inr(o.total) + '</span></div>' +
+      '<div class="foot">Thank you for your order.</div>';
+  }
+
+  function doPrint() {
+    if (!current) return;
+    var slip = $('slip');
+    slip.className = paper;
+    slip.innerHTML = buildSlip(current);
+    $('pageStyle').textContent = paper === 'a5'
+      ? '@page { size: A5 portrait; margin: 8mm; }'
+      : '@page { size: 80mm auto; margin: 3mm; }';
+    setTimeout(function () { window.print(); }, 60);
+  }
+
+  function markPrinted(order, btn) {
+    App.setBusy(btn, true, 'Saving...');
+    App.api('markPrinted', { token: order.token, password: App.store.get(PW_KEY) }).then(function (r) {
+      if (current && current.token === r.order.token) renderOrder(r.order, true);
+      App.toast('Marked as printed.', 'ok');
+    }).catch(function (e) {
+      App.setBusy(btn, false);
+      if (/password/i.test(e.message)) return logout('Your session expired. Please log in again.');
+      App.toast(e.message, 'error');
+    });
+  }
+})();
+</script>
+</body>
+</html>
